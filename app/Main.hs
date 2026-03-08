@@ -181,6 +181,15 @@ handleNext env_map exitcode (current_op:rest)
     | otherwise = Main.shell env_map rest -- Invalid operator
 
 containsRedir :: [String] -> Bool
+{-
+    Determines whether the current command has a redirection.
+
+    Arguments:
+        [String] - The current command
+    
+    Returns:
+        Bool - True if > or >> or < is in the current command, False otherwise
+-}
 containsRedir cmd
     | ">" `elem` cmd = True
     | ">>" `elem` cmd = True
