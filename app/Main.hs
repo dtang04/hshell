@@ -132,7 +132,12 @@ processCurrentCmd env_map current_cmd rest =
         ["cd"]      -> execute env_map (Cd Nothing) rest
         ["env"]     -> execute env_map (Env) rest
         [s] | Just (var, val) <- splitbyAssignment s -> execute env_map (SVar (var, val)) rest
-        _           -> putStrLn "Invalid Command." >> Main.shell env_map rest
+        _           -> if containsRedir current_cmd 
+                       then 
+                          do 
+                            exit_status <- system (unwords current_cmd)
+                            handleNext env_map exit_status rest
+                       else putStrLn "Invalid Command." >> Main.shell env_map rest
 
 splitAtOperator :: [String] -> ([String], [String])
 {-
@@ -174,6 +179,13 @@ handleNext env_map exitcode (current_op:rest)
     | current_op == "||" && exitcode == ExitSuccess = Main.shell env_map []
     | current_op == ";" = Main.shell env_map rest
     | otherwise = Main.shell env_map rest -- Invalid operator
+
+containsRedir :: [String] -> Bool
+containsRedir cmd
+    | ">" `elem` cmd = True
+    | ">>" `elem` cmd = True
+    | "<"  `elem` cmd = True
+    | otherwise = False
 
 main :: IO ()
 main = do
