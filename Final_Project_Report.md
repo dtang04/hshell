@@ -28,6 +28,7 @@ Emphasis was placed on clear separation between parsing user commands, evaluatio
 * Added environment variable support that persists throughout the shell
 * Write a small suite of tests for the command parser and evaluator.
 *  Support command sequencing using operators such as `;`, `&&`, and `||`, with behavior determined by exit codes.
+*  Grep Implementation
 
 
 ## Running the HShell
