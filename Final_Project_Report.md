@@ -1,5 +1,16 @@
 # hshell - A Simple Shell in Haskell
 
+## About the Project
+
+For my final project in CMSC 22300, I created a UNIX-style command-line shell in Haskell. The shell takes in user-inputted UNIX commands and concepts (e.g. ls, pwd, multi-argument commands, shell variables, command history) combined with file IO, to produce the desired output. The goal of this project was not only to have a project that is intuitive and useful, but also develop a better understanding of Haskell’s IO Monad features, as to me, such a topic is complex yet powerful.
+
+Rather than attempting to fully replicate an existing shell, such as bash or zsh that is integrated with process management (such as C's execve), this project focuses on a carefully scoped subset of shell functionality that can be implemented cleanly and correctly within the project timeframe. 
+
+Several useful system functions in Haskell, such as `system` and `setCurrentDirectory`, were studied and later leveraged. Exit code types in `System.Exit` were also
+used in parsing multiargument commands. Through this project, I also gained a better understanding of Haskell's suite of tools to parse file and stdin input.
+
+Emphasis was placed on clear separation between parsing user commands, evaluation, and execution, as well as on robust handling of errors and edge cases.
+
 ## Running the HShell
 
 ### Build
@@ -250,6 +261,6 @@ Returns:
 ```
 
 ### About Me and Contact Info:
-* Dylan Tang, 4th Year Stats + CS student at UChicago
-* Phone: (630) - 915 - 3426
+* Dylan Tang, 4th Year Computer Science and Statistics student at UChicago
+* Phone: (630)-915-3426
 * Email: dtang04@uchicago.edu
