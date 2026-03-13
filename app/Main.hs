@@ -10,7 +10,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 
 data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String] | History 
-                    | Clear | Cat String | Touch String | MkDir String
+                    | Clear | Cat String | Touch String | MkDir String | Rm String | RmDir String | Date
 
 shell :: Map String String -> [String] -> [String] -> IO ()
 {-
@@ -138,9 +138,24 @@ execute env_map (Touch f_name) rest_cmds history = do
     exitCode <- system ("touch " ++ f_name)
     handleNext env_map exitCode rest_cmds history
 
+-- rm
+execute env_map (Rm f_name) rest_cmds history = do
+    exitCode <- system ("rm " ++ f_name)
+    handleNext env_map exitCode rest_cmds history
+
 -- mkdir
 execute env_map (MkDir dir_name) rest_cmds history = do
     exitCode <- system ("mkdir " ++ dir_name)
+    handleNext env_map exitCode rest_cmds history
+
+-- rmdir
+execute env_map (RmDir dir_name) rest_cmds history = do
+    exitCode <- system ("rmdir " ++ dir_name)
+    handleNext env_map exitCode rest_cmds history
+
+-- date
+execute env_map Date rest_cmds history = do
+    exitCode <- system "date"
     handleNext env_map exitCode rest_cmds history
 
 -- adding new env var
@@ -197,8 +212,11 @@ processCurrentCmd env_map current_cmd rest history =
         [s] | Just (var, val) <- splitbyAssignment s -> execute env_map (SVar (var, val)) rest (history ++ [var ++ "=" ++ val])
         ["cat", f_name]             -> execute env_map (Cat f_name) rest (history ++ ["cat " ++ f_name])
         ["touch", f_name]           -> execute env_map (Touch f_name) rest (history ++ ["touch " ++ f_name])
-        ["mkdir", dir_name]           -> execute env_map (MkDir dir_name) rest (history ++ ["mkdir " ++ dir_name])
-        _           -> if containsRedir current_cmd
+        ["rm", f_name]              -> execute env_map (Rm f_name) rest (history ++ ["rm " ++ f_name])
+        ["mkdir", dir_name]         -> execute env_map (MkDir dir_name) rest (history ++ ["mkdir " ++ dir_name])
+        ["rmdir", dir_name]         -> execute env_map (RmDir dir_name) rest (history ++ ["rmdir " ++ dir_name])
+        ["date"]                    -> execute env_map (Date) rest (history ++ ["date"])
+        _           -> if containsRedir current_cmd -- check for redirections
                        then 
                           do 
                             exit_status <- system (unwords current_cmd)
