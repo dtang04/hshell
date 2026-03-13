@@ -11,6 +11,25 @@ used in parsing multiargument commands. Through this project, I also gained a be
 
 Emphasis was placed on clear separation between parsing user commands, evaluation, and execution, as well as on robust handling of errors and edge cases.
 
+## Project Goals 
+
+### Easy Goals
+* Implement a basic “do … main” recursive loop that repeatedly prompts for input and executes commands.
+* Parse simple commands consisting of a program name and arguments (e.g., `ls -l`, `pwd`).
+* Begin to develop a solid understanding of Haskell’s IO functions and writing simple, clean code
+
+### Medium Goals
+* Add built-in commands that must execute within the shell process itself
+* Maintain shell state (e.g., current working directory) across commands.
+* Begin to integrate functions that require working with the home directory
+* Maintain command history that persists throughout the shell
+
+### Hard Goals
+* Added environment variable support that persists throughout the shell
+* Write a small suite of tests for the command parser and evaluator.
+*  Support command sequencing using operators such as ;, &&, and ||, with behavior determined by exit codes.
+
+
 ## Running the HShell
 
 ### Build
