@@ -88,3 +88,10 @@ displayHistory :: [String] -> IO()
 -}
 displayHistory entries = do
     mapM_ putStrLn [show i ++ "  " ++ cmd | (i, cmd) <- zip [1::Int ..] entries]
+
+displayGrepN :: (Int, String) -> IO()
+{-
+
+-}
+displayGrepN (l_num, line) = do
+    putStrLn (show l_num ++ ": " ++ line)

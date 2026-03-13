@@ -62,7 +62,20 @@ cabal run
 | `date` | Display current date and time |
 | `whoami` | Display current user |
 | `hostname` | Display system hostname |
+| `grep <pattern> <file>` | Search for pattern in file |
+| `grep <flag> <pattern> <file>` | Search with flag (one flag at a time) |
 | `exit` | Exit hshell |
+
+## Grep Flags
+
+| Flag | Description |
+|------|-------------|
+| `-n` | Show line numbers |
+| `-i` | Case insensitive search |
+| `-v` | Invert match (lines without pattern) |
+| `-c` | Count matching lines |
+
+Note: In `hshell`, only one flag is supported at a time.
 
 ## Command Chaining
 
@@ -71,6 +84,8 @@ cabal run
 | `&&` | Run next command only if previous succeeds |
 | `\|\|` | Run next command only if previous fails |
 | `;` | Always run next command |
+
+Note: In `hshell`, operators must be separated by spaces (e.g. `ls -l ; pwd`)
 
 ## Multi-Word Arguments (Echo)
 
@@ -134,7 +149,15 @@ data Command = Exit
              | Echo [String]          -- multiple arguments
              | History
              | Clear
-            ...
+             | Cat String             -- filename
+             | Touch String           -- create file
+             | MkDir String           -- create directory
+             | Rm String              -- remove file
+             | RmDir String           -- remove directory
+             | Date                   -- current date/time
+             | Me                     -- whoami
+             | HostName               -- hostname
+             | Grep (String, Maybe String, String)  -- (pattern, flag, file)
 ```
 
 ### Data.Map

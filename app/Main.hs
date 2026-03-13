@@ -1,16 +1,29 @@
 module Main where
 
-import System.IO
-import System.Process
+import System.IO ( hSetBuffering, stdout, BufferMode(NoBuffering) )
+import System.Process ( system )
 import System.Directory
+    ( doesDirectoryExist,
+      doesFileExist,
+      getHomeDirectory,
+      setCurrentDirectory )
 import System.Exit (ExitCode(..))
 import Helpers
+    ( containsRedir,
+      displayHistory,
+      showEnvVars,
+      splitAtOperator,
+      splitbyAssignment,
+      displayGrepN )
+import Data.List ( isInfixOf )
+import Data.Char ( toLower )
 
 import Data.Map (Map)
 import qualified Data.Map as Map
 
 data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String] | History 
                     | Clear | Cat String | Touch String | MkDir String | Rm String | RmDir String | Date | Me | HostName
+                    | Grep (String, Maybe String, String)
 
 shell :: Map String String -> [String] -> [String] -> IO ()
 {-
@@ -168,6 +181,47 @@ execute env_map HostName rest_cmds history = do
     exitCode <- system "hostname"
     handleNext env_map exitCode rest_cmds history
 
+-- grep (no flag)
+execute env_map (Grep (pattern, Nothing, f_name)) rest_cmds history = 
+    do
+        file <- readFile f_name
+        let linesF = lines file
+            match = filter(\l -> pattern `isInfixOf` l) linesF
+        mapM_ putStrLn match
+        handleNext env_map ExitSuccess rest_cmds history
+
+-- grep (flags)
+execute env_map (Grep (pattern, Just flag, f_name)) rest_cmds history =
+    do
+        file <- readFile f_name
+        let linesF = lines file
+
+        case flag of
+            "-n" -> do
+                        let
+                            linesN = zip [1..] linesF
+                            match = filter(\(_,l) -> pattern `isInfixOf` l) linesN
+                        mapM_ displayGrepN match
+                        handleNext env_map ExitSuccess rest_cmds history
+            "-i" -> do
+                        let
+                            match = filter (\l -> map toLower pattern `isInfixOf` map toLower l) linesF
+                        mapM_ putStrLn match
+                        handleNext env_map ExitSuccess rest_cmds history
+            "-v" -> do
+                        let
+                            match = filter (\l -> not (pattern `isInfixOf` l)) linesF
+                        mapM_ putStrLn match
+                        handleNext env_map ExitSuccess rest_cmds history
+            "-c" -> do
+                        let
+                            match = filter(\l -> pattern `isInfixOf` l) linesF
+                        print (length match)
+                        handleNext env_map ExitSuccess rest_cmds history
+            _ -> do
+                        putStrLn "Invalid grep flag"
+                        handleNext env_map (ExitFailure 1) rest_cmds history
+
 -- adding new env var
 execute env_map (SVar (var, value)) rest_cmds history = do
     let env_map' = Map.insert var value env_map
@@ -228,6 +282,8 @@ processCurrentCmd env_map current_cmd rest history =
         ["date"]                    -> execute env_map Date rest (history ++ ["date"])
         ["whoami"]                  -> execute env_map Me rest (history ++ ["whoami"])
         ["hostname"]                -> execute env_map HostName rest (history ++ ["hostname"])
+        ["grep", p, f_name]      -> execute env_map (Grep (p, Nothing, f_name)) rest (history ++ ["grep " ++ p ++ " " ++ f_name])
+        ["grep", flag, p, f_name]   -> execute env_map (Grep (p, Just flag, f_name)) rest (history ++ ["grep " ++ flag ++ " " ++ p ++ " " ++ f_name])
         _           -> if containsRedir current_cmd -- check for redirections
                        then 
                           do 
