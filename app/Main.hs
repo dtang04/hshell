@@ -9,7 +9,8 @@ import Helpers
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String] | History | Clear | Cat String | Touch String
+data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String] | History 
+                    | Clear | Cat String | Touch String | MkDir String
 
 shell :: Map String String -> [String] -> [String] -> IO ()
 {-
@@ -132,9 +133,14 @@ execute env_map (Cat f_name) rest_cmds history = do
         putStrLn "File does not exist"
         handleNext env_map (ExitFailure 1) rest_cmds history
 
---touch
+-- touch
 execute env_map (Touch f_name) rest_cmds history = do
     exitCode <- system ("touch " ++ f_name)
+    handleNext env_map exitCode rest_cmds history
+
+-- mkdir
+execute env_map (MkDir dir_name) rest_cmds history = do
+    exitCode <- system ("mkdir " ++ dir_name)
     handleNext env_map exitCode rest_cmds history
 
 -- adding new env var
@@ -191,6 +197,7 @@ processCurrentCmd env_map current_cmd rest history =
         [s] | Just (var, val) <- splitbyAssignment s -> execute env_map (SVar (var, val)) rest (history ++ [var ++ "=" ++ val])
         ["cat", f_name]             -> execute env_map (Cat f_name) rest (history ++ ["cat " ++ f_name])
         ["touch", f_name]           -> execute env_map (Touch f_name) rest (history ++ ["touch " ++ f_name])
+        ["mkdir", dir_name]           -> execute env_map (MkDir dir_name) rest (history ++ ["mkdir " ++ dir_name])
         _           -> if containsRedir current_cmd
                        then 
                           do 
