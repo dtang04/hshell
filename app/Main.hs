@@ -9,7 +9,7 @@ import Helpers
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String] | History | Clear
+data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String] | History | Clear | Cat String
 
 shell :: Map String String -> [String] -> [String] -> IO ()
 {-
@@ -120,6 +120,18 @@ execute env_map Clear rest_cmds history = do
     _ <- system "clear"
     handleNext env_map ExitSuccess rest_cmds history
 
+-- cat
+execute env_map (Cat f_name) rest_cmds history = do
+    status <- doesFileExist f_name
+    if status
+    then do
+        contents <- readFile f_name
+        putStr contents
+        handleNext env_map ExitSuccess rest_cmds history
+    else do
+        putStrLn "File does not exist"
+        handleNext env_map (ExitFailure 1) rest_cmds history
+
 -- adding new env var
 execute env_map (SVar (var, value)) rest_cmds history = do
     let env_map' = Map.insert var value env_map
@@ -172,12 +184,13 @@ processCurrentCmd env_map current_cmd rest history =
         ["history"] -> execute env_map History rest (history ++ ["history"])
         ["clear"]   -> execute env_map Clear rest (history ++ ["clear"])
         [s] | Just (var, val) <- splitbyAssignment s -> execute env_map (SVar (var, val)) rest (history ++ [var ++ "=" ++ val])
+        ["cat", f_name]     -> execute env_map (Cat f_name) rest (history ++ ["cat " ++ f_name])
         _           -> if containsRedir current_cmd
                        then 
                           do 
                             exit_status <- system (unwords current_cmd)
                             handleNext env_map exit_status rest (history ++ [unwords current_cmd])
-                       else putStrLn "Invalid Command." >> Main.shell env_map rest history
+                       else putStrLn "Invalid Command" >> Main.shell env_map rest history
 
 main :: IO ()
 main = do
