@@ -53,6 +53,13 @@ extra-doc-files:    CHANGELOG.md
 common warnings
     ghc-options: -Wall
 
+library
+    import:           warnings
+    exposed-modules:  Helpers
+    build-depends:    base ^>=4.18.3.0, containers
+    hs-source-dirs:   app
+    default-language: Haskell2010
+
 executable cs223-final-project
     -- Import common warning flags.
     import:           warnings
@@ -61,7 +68,7 @@ executable cs223-final-project
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules: Helpers
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -73,4 +80,12 @@ executable cs223-final-project
     hs-source-dirs:   app
 
     -- Base language which the package is written in.
+    default-language: Haskell2010
+
+test-suite hshell-test
+    import:           warnings
+    type:             exitcode-stdio-1.0
+    main-is:          Tests.hs
+    build-depends:    base ^>=4.18.3.0, hspec, cs223-final-project
+    hs-source-dirs:   tests
     default-language: Haskell2010

@@ -4,6 +4,7 @@ import System.IO
 import System.Process
 import System.Directory
 import System.Exit (ExitCode(..))
+import Helpers
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -81,36 +82,29 @@ execute env_map (SVar (var, value)) rest_cmds = do
     let env_map' = Map.insert var value env_map
     handleNext env_map' ExitSuccess rest_cmds
 
--- Helper Functions --
-
-splitbyAssignment :: String -> Maybe (String, String)
+handleNext :: Map String String -> ExitCode -> [String] -> IO ()
 {-
-    Helper function for splitting by "=" for env vars.
-    Arguments:
-        String - The "var_name=var_val" string to split by
-    Returns:
-        Just (String, String) - if splitting was sucessful
-        Nothing otherwise
--}
-splitbyAssignment s = 
-    case break (== '=') s of
-        (var, '=':val) -> Just (var, val)
-        _              -> Nothing
+    Determines whether to continue executing the argument or not, based on the operator.
 
-showEnvVars :: Map String String -> IO ()
-{-
-    Helper function to show the entire env_map.
-    Arguments:
-        Map String String - The env var map.
+    Arguments: 
+        Map String String - The env var map
+        ExitCode - exit code from previous command
+        [String] - Sequence of remaining command (e.g. ["&&", "ls"])
     Returns:
-        IO () - Prints to stdout
+        IO () - continues/stops shell 
 -}
-showEnvVars env_map = 
-    do
-        let env_kv = Map.toList env_map
-        mapM_ putKV env_kv
-    where
-        putKV (k, v) = putStrLn (k ++ "=" ++ v)
+handleNext env_map _ [] = Main.shell env_map [] -- ready to parse new input
+handleNext env_map exitcode (current_op:rest)
+    | current_op == "&&" && exitcode == ExitSuccess = Main.shell env_map rest
+    | current_op == "&&" && exitcode /= ExitSuccess = do
+        putStrLn "Execution failed, exiting..."
+        Main.shell env_map []
+    | current_op == "||" && exitcode /= ExitSuccess = do
+        putStrLn "Execution failed, continuing to next command"
+        Main.shell env_map rest
+    | current_op == "||" && exitcode == ExitSuccess = Main.shell env_map []
+    | current_op == ";" = Main.shell env_map rest
+    | otherwise = Main.shell env_map rest -- Invalid operator
 
 processCurrentCmd :: Map String String -> [String] -> [String] -> IO()
 {-
@@ -138,63 +132,6 @@ processCurrentCmd env_map current_cmd rest =
                             exit_status <- system (unwords current_cmd)
                             handleNext env_map exit_status rest
                        else putStrLn "Invalid Command." >> Main.shell env_map rest
-
-splitAtOperator :: [String] -> ([String], [String])
-{-
-    Ingests the current command until an operator is found.
-    E.g. ["ls", "-la", "&&", "pwd", ";", "ls"] -> (["ls", "-la"], ["&&", "pwd", ";", "ls"])
-    
-    Arguments:
-        [String] - The command list
-    Returns:
-        ([String], [String]) - The first element is the current command, the second element is the rest of the command list
--}
-splitAtOperator [] = ([], [])
-splitAtOperator (x:xs)
-    | x `elem` ["&&", "||", ";"] = ([], x:xs) --end the current command if operator is found
-    | otherwise =
-        let (cmd_continue, rest) = splitAtOperator xs
-        in (x:cmd_continue, rest)
-
-handleNext :: Map String String -> ExitCode -> [String] -> IO ()
-{-
-    Determines whether to continue executing the argument or not, based on the operator.
-
-    Arguments: 
-        Map String String - The env var map
-        ExitCode - exit code from previous command
-        [String] - Sequence of remaining command (e.g. ["&&", "ls"])
-    Returns:
-        IO () - continues/stops shell 
--}
-handleNext env_map _ [] = Main.shell env_map [] -- ready to parse new input
-handleNext env_map exitcode (current_op:rest)
-    | current_op == "&&" && exitcode == ExitSuccess = Main.shell env_map rest
-    | current_op == "&&" && exitcode /= ExitSuccess = do
-        putStrLn "Execution failed, exiting..."
-        Main.shell env_map []
-    | current_op == "||" && exitcode /= ExitSuccess = do
-        putStrLn "Execution failed, continuing to next command"
-        Main.shell env_map rest
-    | current_op == "||" && exitcode == ExitSuccess = Main.shell env_map []
-    | current_op == ";" = Main.shell env_map rest
-    | otherwise = Main.shell env_map rest -- Invalid operator
-
-containsRedir :: [String] -> Bool
-{-
-    Determines whether the current command has a redirection.
-
-    Arguments:
-        [String] - The current command
-    
-    Returns:
-        Bool - True if > or >> or < is in the current command, False otherwise
--}
-containsRedir cmd
-    | ">" `elem` cmd = True
-    | ">>" `elem` cmd = True
-    | "<"  `elem` cmd = True
-    | otherwise = False
 
 main :: IO ()
 main = do
