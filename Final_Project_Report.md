@@ -50,11 +50,18 @@ cabal run
 | `pwd` | Print working directory |
 | `cd [dir]` | Change directory (supports `~` and `~/path`) |
 | `cat <file>` | Display file contents |
+| `touch <file>` | Create an empty file |
+| `mkdir <dir>` | Create a directory |
+| `rm <file>` | Remove a file |
+| `rmdir <dir>` | Remove an empty directory |
 | `echo <args>` | Print arguments (supports `$var` expansion) |
 | `env` | Display all environment variables |
 | `VAR=value` | Set an environment variable |
 | `history` | Display command history |
 | `clear` | Clear the terminal |
+| `date` | Display current date and time |
+| `whoami` | Display current user |
+| `hostname` | Display system hostname |
 | `exit` | Exit hshell |
 
 ## Command Chaining
@@ -127,7 +134,7 @@ data Command = Exit
              | Echo [String]          -- multiple arguments
              | History
              | Clear
-             | Cat String             -- filename
+            ...
 ```
 
 ### Data.Map
