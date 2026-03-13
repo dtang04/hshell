@@ -126,6 +126,16 @@ mapM_ putStrLn historyLines
 mapM_ putKV (Map.toList env_map)
 ```
 
+### Test.Hspec (Unit Testing)
+Used the `hspec` testing framework to write unit tests for pure helper functions:
+```haskell
+main = hspec $ do
+    describe "splitAtOperator" $ do
+        it "splits before &&" $
+            splitAtOperator ["ls", "-la", "&&", "pwd"]
+                `shouldBe` (["ls", "-la"], ["&&", "pwd"])
+```
+
 ---
 
 ## Architecture
