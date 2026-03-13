@@ -68,5 +68,23 @@ containsRedir cmd
     | otherwise = False
 
 displayHistory :: [String] -> IO()
+{-
+    Helper function for the hshell history command. Given a list of
+    previous commands, displays it in a manner consistent with the UNIX history
+    command.
+
+    Ex. 
+    1  ls
+    2  test=5
+    3  echo $test
+    4  cd ~
+    5  history
+
+    Arguments:
+        [String] - List of previous commands for the current hshell instance
+    
+    Returns:
+        IO() - Prints histories to stdout in the above format.
+-}
 displayHistory entries = do
     mapM_ putStrLn [show i ++ "  " ++ cmd | (i, cmd) <- zip [1::Int ..] entries]

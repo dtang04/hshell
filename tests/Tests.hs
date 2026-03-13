@@ -3,7 +3,7 @@ import Test.Hspec
 
 main :: IO()
 {-
-    Simple test file that tests functions with no IO() return type.
+    Simple test file that tests functions with no IO return type.
 -}
 main = hspec $ do
     describe "splitAtOperator" $ do
