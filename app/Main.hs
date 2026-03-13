@@ -9,7 +9,7 @@ import Helpers
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String] | History | Clear | Cat String
+data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String] | History | Clear | Cat String | Touch String
 
 shell :: Map String String -> [String] -> [String] -> IO ()
 {-
@@ -117,8 +117,8 @@ execute env_map History rest_cmds history = do
 
 -- clear
 execute env_map Clear rest_cmds history = do
-    _ <- system "clear"
-    handleNext env_map ExitSuccess rest_cmds history
+    exitCode <- system "clear"
+    handleNext env_map exitCode rest_cmds history
 
 -- cat
 execute env_map (Cat f_name) rest_cmds history = do
@@ -131,6 +131,11 @@ execute env_map (Cat f_name) rest_cmds history = do
     else do
         putStrLn "File does not exist"
         handleNext env_map (ExitFailure 1) rest_cmds history
+
+--touch
+execute env_map (Touch f_name) rest_cmds history = do
+    exitCode <- system ("touch " ++ f_name)
+    handleNext env_map exitCode rest_cmds history
 
 -- adding new env var
 execute env_map (SVar (var, value)) rest_cmds history = do
@@ -173,18 +178,19 @@ processCurrentCmd :: Map String String -> [String] -> [String] -> [String] -> IO
 -}
 processCurrentCmd env_map current_cmd rest history = 
     case current_cmd of
-        ["exit"]    -> execute env_map Exit [] (history ++ ["exit"])
-        ["ls"]      -> execute env_map (Ls Nothing) rest (history ++ ["ls"])
-        ["ls", dir] -> execute env_map (Ls (Just dir)) rest (history ++ ["ls " ++ dir])
-        ["pwd"]     -> execute env_map Pwd rest (history ++ ["pwd"])
-        ["cd", dir] -> execute env_map (Cd (Just dir)) rest (history ++ ["cd " ++ dir])
-        ["cd"]      -> execute env_map (Cd Nothing) rest (history ++ ["cd"])
-        ["env"]     -> execute env_map Env rest (history ++ ["env"])
-        "echo":args -> execute env_map (Echo args) rest (history ++ ["echo " ++ unwords args])
-        ["history"] -> execute env_map History rest (history ++ ["history"])
-        ["clear"]   -> execute env_map Clear rest (history ++ ["clear"])
+        ["exit"]                    -> execute env_map Exit [] (history ++ ["exit"])
+        ["ls"]                      -> execute env_map (Ls Nothing) rest (history ++ ["ls"])
+        ["ls", dir]                 -> execute env_map (Ls (Just dir)) rest (history ++ ["ls " ++ dir])
+        ["pwd"]                     -> execute env_map Pwd rest (history ++ ["pwd"])
+        ["cd", dir]                 -> execute env_map (Cd (Just dir)) rest (history ++ ["cd " ++ dir])
+        ["cd"]                      -> execute env_map (Cd Nothing) rest (history ++ ["cd"])
+        ["env"]                     -> execute env_map Env rest (history ++ ["env"])
+        "echo":args                 -> execute env_map (Echo args) rest (history ++ ["echo " ++ unwords args])
+        ["history"]                 -> execute env_map History rest (history ++ ["history"])
+        ["clear"]                   -> execute env_map Clear rest (history ++ ["clear"])
         [s] | Just (var, val) <- splitbyAssignment s -> execute env_map (SVar (var, val)) rest (history ++ [var ++ "=" ++ val])
-        ["cat", f_name]     -> execute env_map (Cat f_name) rest (history ++ ["cat " ++ f_name])
+        ["cat", f_name]             -> execute env_map (Cat f_name) rest (history ++ ["cat " ++ f_name])
+        ["touch", f_name]           -> execute env_map (Touch f_name) rest (history ++ ["touch " ++ f_name])
         _           -> if containsRedir current_cmd
                        then 
                           do 
