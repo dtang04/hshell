@@ -9,7 +9,7 @@ import Helpers
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo String
+data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String]
 
 shell :: Map String String -> [String] -> IO ()
 {-
@@ -92,18 +92,23 @@ execute env_map Env rest_cmds = do
     handleNext env_map ExitSuccess rest_cmds
 
 -- echo
-execute env_map (Echo str) rest_cmds
-    | null str = do 
-        putStrLn ""
-        handleNext env_map ExitSuccess rest_cmds
-    | head str == '$' = do
-        case Map.lookup (tail str) env_map of 
-            Just x  -> putStrLn x
-            _ -> putStrLn ""
-        handleNext env_map ExitSuccess rest_cmds
-    | otherwise = do 
-        putStrLn str
-        handleNext env_map ExitSuccess rest_cmds
+execute env_map (Echo args) rest_cmds = go env_map args rest_cmds
+    where
+        go env_map' [] rest_cmds' = do
+            putStrLn ""
+            handleNext env_map' ExitSuccess rest_cmds'
+        go env_map' (a:as) rest_cmds'
+            | null a = do 
+                putStr ""
+                go env_map' as rest_cmds'
+            | head a == '$' = do
+                case Map.lookup (tail a) env_map of 
+                    Just x  -> putStr (x ++ " ")
+                    _ -> putStr " "
+                go env_map as rest_cmds
+            | otherwise = do 
+                putStr (a ++ " ")
+                go env_map as rest_cmds
 
 -- adding new env var
 execute env_map (SVar (var, value)) rest_cmds = do
@@ -153,8 +158,7 @@ processCurrentCmd env_map current_cmd rest =
         ["cd", dir] -> execute env_map (Cd (Just dir)) rest
         ["cd"]      -> execute env_map (Cd Nothing) rest
         ["env"]     -> execute env_map (Env) rest
-        ["echo"]    -> execute env_map (Echo "") rest
-        ["echo", str]    -> execute env_map (Echo str) rest
+        "echo":args    -> execute env_map (Echo args) rest
         [s] | Just (var, val) <- splitbyAssignment s -> execute env_map (SVar (var, val)) rest
         _           -> if containsRedir current_cmd 
                        then 
