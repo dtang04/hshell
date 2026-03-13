@@ -9,7 +9,7 @@ import Helpers
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String] | History
+data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String] | History | Clear
 
 shell :: Map String String -> [String] -> [String] -> IO ()
 {-
@@ -115,6 +115,11 @@ execute env_map History rest_cmds history = do
     displayHistory history
     handleNext env_map ExitSuccess rest_cmds history
 
+-- clear
+execute env_map Clear rest_cmds history = do
+    _ <- system "clear"
+    handleNext env_map ExitSuccess rest_cmds history
+
 -- adding new env var
 execute env_map (SVar (var, value)) rest_cmds history = do
     let env_map' = Map.insert var value env_map
@@ -165,6 +170,7 @@ processCurrentCmd env_map current_cmd rest history =
         ["env"]     -> execute env_map Env rest (history ++ ["env"])
         "echo":args -> execute env_map (Echo args) rest (history ++ ["echo " ++ unwords args])
         ["history"] -> execute env_map History rest (history ++ ["history"])
+        ["clear"]   -> execute env_map Clear rest (history ++ ["clear"])
         [s] | Just (var, val) <- splitbyAssignment s -> execute env_map (SVar (var, val)) rest (history ++ [var ++ "=" ++ val])
         _           -> if containsRedir current_cmd
                        then 
