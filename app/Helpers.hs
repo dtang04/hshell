@@ -66,3 +66,7 @@ containsRedir cmd
     | ">>" `elem` cmd = True
     | "<"  `elem` cmd = True
     | otherwise = False
+
+displayHistory :: [String] -> IO()
+displayHistory entries = do
+    mapM_ putStrLn [show i ++ "  " ++ cmd | (i, cmd) <- zip [1::Int ..] entries]

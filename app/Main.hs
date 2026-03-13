@@ -9,9 +9,9 @@ import Helpers
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String]
+data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String] | History
 
-shell :: Map String String -> [String] -> IO ()
+shell :: Map String String -> [String] -> [String] -> IO ()
 {-
     The main hshell.
     Arguments:
@@ -21,17 +21,17 @@ shell :: Map String String -> [String] -> IO ()
         IO Monad - shell process
 -}
 
-shell env_map [] = do -- no more pending operations, get next command from user
+shell env_map [] history = do -- no more pending operations, get next command from user
     putStr "hshell> "
     input <- getLine
     let (current_cmd, rest) = splitAtOperator (words input)
-    processCurrentCmd env_map current_cmd rest
+    processCurrentCmd env_map current_cmd rest history
         
-shell env_map cmd_lst = do -- an operation is in-flight
+shell env_map cmd_lst history = do -- an operation is in-flight
     let (current_cmd, rest) = splitAtOperator cmd_lst
-    processCurrentCmd env_map current_cmd rest
+    processCurrentCmd env_map current_cmd rest history
 
-execute :: Map String String -> Command -> [String] -> IO ()
+execute :: Map String String -> Command -> [String] -> [String] -> IO ()
 {-
     Given a command from hshell, executes it and returns to hshell.
     Arguments:
@@ -41,81 +41,86 @@ execute :: Map String String -> Command -> [String] -> IO ()
     Returns:
         IO Monad - shell process
 -}
-execute _ Exit _ = putStrLn "Exiting hshell..."
+execute _ Exit _ _ = putStrLn "Exiting hshell..."
 
 -- ls
-execute env_map (Ls Nothing) rest_cmds = do
+execute env_map (Ls Nothing) rest_cmds history = do
     exitCode <- system "ls"
-    handleNext env_map exitCode rest_cmds
-execute env_map (Ls (Just dir)) rest_cmds = do
+    handleNext env_map exitCode rest_cmds history
+execute env_map (Ls (Just dir)) rest_cmds history = do
     exitCode <- system ("ls " ++ dir)
-    handleNext env_map exitCode rest_cmds
+    handleNext env_map exitCode rest_cmds history
 
 -- pwd
-execute env_map Pwd rest_cmds = do
+execute env_map Pwd rest_cmds history = do
     exitCode <- system "pwd"
-    handleNext env_map exitCode rest_cmds
+    handleNext env_map exitCode rest_cmds history
 
 -- cd
-execute env_map (Cd Nothing) rest_cmds = do
+execute env_map (Cd Nothing) rest_cmds history = do
     homeDir <- getHomeDirectory
     setCurrentDirectory homeDir
-    handleNext env_map ExitSuccess rest_cmds
+    handleNext env_map ExitSuccess rest_cmds history
 
-execute env_map (Cd (Just ('~':'/':rest))) rest_cmds = do
+execute env_map (Cd (Just ('~':'/':rest))) rest_cmds history = do
     homeDir <- getHomeDirectory
     let full_path = homeDir ++ "/" ++ rest
     status <- doesDirectoryExist full_path
     if status
         then do
             setCurrentDirectory full_path
-            handleNext env_map ExitSuccess rest_cmds
+            handleNext env_map ExitSuccess rest_cmds history
         else do
             putStrLn "Directory doesn't exist."
-            handleNext env_map ExitSuccess rest_cmds
+            handleNext env_map ExitSuccess rest_cmds history
 
-execute env_map (Cd (Just dir)) rest_cmds
-    | dir == "~" = execute env_map (Cd Nothing) rest_cmds
+execute env_map (Cd (Just dir)) rest_cmds history
+    | dir == "~" = execute env_map (Cd Nothing) rest_cmds history
     | otherwise = do
         status <- doesDirectoryExist dir
         if status
         then do
             setCurrentDirectory dir 
-            handleNext env_map ExitSuccess rest_cmds
+            handleNext env_map ExitSuccess rest_cmds history
         else do
             putStrLn "Directory doesn't exist."
-            handleNext env_map ExitSuccess rest_cmds
+            handleNext env_map ExitSuccess rest_cmds history
 
 -- env
-execute env_map Env rest_cmds = do
+execute env_map Env rest_cmds history = do
     showEnvVars env_map
-    handleNext env_map ExitSuccess rest_cmds
+    handleNext env_map ExitSuccess rest_cmds history
 
 -- echo
-execute env_map (Echo args) rest_cmds = go env_map args rest_cmds
+execute env_map (Echo args) rest_cmds history = go env_map args rest_cmds history
     where
-        go env_map' [] rest_cmds' = do
+        go env_map' [] rest_cmds' _ = do
             putStrLn ""
-            handleNext env_map' ExitSuccess rest_cmds'
-        go env_map' (a:as) rest_cmds'
+            handleNext env_map' ExitSuccess rest_cmds' history
+        go env_map' (a:as) rest_cmds' _
             | null a = do 
                 putStr ""
-                go env_map' as rest_cmds'
+                go env_map' as rest_cmds' history
             | head a == '$' = do
                 case Map.lookup (tail a) env_map of 
                     Just x  -> putStr (x ++ " ")
                     _ -> putStr " "
-                go env_map as rest_cmds
+                go env_map as rest_cmds history
             | otherwise = do 
                 putStr (a ++ " ")
-                go env_map as rest_cmds
+                go env_map as rest_cmds history
+
+-- history
+execute env_map History rest_cmds history = do
+    displayHistory history
+    handleNext env_map ExitSuccess rest_cmds history
 
 -- adding new env var
-execute env_map (SVar (var, value)) rest_cmds = do
+execute env_map (SVar (var, value)) rest_cmds history = do
     let env_map' = Map.insert var value env_map
-    handleNext env_map' ExitSuccess rest_cmds
+    handleNext env_map' ExitSuccess rest_cmds history
 
-handleNext :: Map String String -> ExitCode -> [String] -> IO ()
+handleNext :: Map String String -> ExitCode -> [String] -> [String] -> IO ()
 {-
     Determines whether to continue executing the argument or not, based on the operator.
 
@@ -126,20 +131,20 @@ handleNext :: Map String String -> ExitCode -> [String] -> IO ()
     Returns:
         IO () - continues/stops shell 
 -}
-handleNext env_map _ [] = Main.shell env_map [] -- ready to parse new input
-handleNext env_map exitcode (current_op:rest)
-    | current_op == "&&" && exitcode == ExitSuccess = Main.shell env_map rest
+handleNext env_map _ [] history = Main.shell env_map [] history -- ready to parse new input
+handleNext env_map exitcode (current_op:rest) history
+    | current_op == "&&" && exitcode == ExitSuccess = Main.shell env_map rest history
     | current_op == "&&" && exitcode /= ExitSuccess = do
         putStrLn "Execution failed, exiting..."
-        Main.shell env_map []
+        Main.shell env_map [] history
     | current_op == "||" && exitcode /= ExitSuccess = do
         putStrLn "Execution failed, continuing to next command"
-        Main.shell env_map rest
-    | current_op == "||" && exitcode == ExitSuccess = Main.shell env_map []
-    | current_op == ";" = Main.shell env_map rest
-    | otherwise = Main.shell env_map rest -- Invalid operator
+        Main.shell env_map rest history
+    | current_op == "||" && exitcode == ExitSuccess = Main.shell env_map [] history
+    | current_op == ";" = Main.shell env_map rest history
+    | otherwise = Main.shell env_map rest history -- Invalid operator
 
-processCurrentCmd :: Map String String -> [String] -> [String] -> IO()
+processCurrentCmd :: Map String String -> [String] -> [String] -> [String] -> IO()
 {-
     Process the current command.
     Arguments:
@@ -149,25 +154,26 @@ processCurrentCmd :: Map String String -> [String] -> [String] -> IO()
         [String] - The current command (e.g. ["ls", "-l"])
         [String] - The rest of the command list (e.g. ["&&", "pwd"])
 -}
-processCurrentCmd env_map current_cmd rest = 
+processCurrentCmd env_map current_cmd rest history = 
     case current_cmd of
-        ["exit"]    -> execute env_map Exit []
-        ["ls"]      -> execute env_map (Ls Nothing) rest
-        ["ls", dir] -> execute env_map (Ls (Just dir)) rest
-        ["pwd"]     -> execute env_map (Pwd) rest
-        ["cd", dir] -> execute env_map (Cd (Just dir)) rest
-        ["cd"]      -> execute env_map (Cd Nothing) rest
-        ["env"]     -> execute env_map (Env) rest
-        "echo":args    -> execute env_map (Echo args) rest
-        [s] | Just (var, val) <- splitbyAssignment s -> execute env_map (SVar (var, val)) rest
-        _           -> if containsRedir current_cmd 
+        ["exit"]    -> execute env_map Exit [] (history ++ ["exit"])
+        ["ls"]      -> execute env_map (Ls Nothing) rest (history ++ ["ls"])
+        ["ls", dir] -> execute env_map (Ls (Just dir)) rest (history ++ ["ls " ++ dir])
+        ["pwd"]     -> execute env_map Pwd rest (history ++ ["pwd"])
+        ["cd", dir] -> execute env_map (Cd (Just dir)) rest (history ++ ["cd " ++ dir])
+        ["cd"]      -> execute env_map (Cd Nothing) rest (history ++ ["cd"])
+        ["env"]     -> execute env_map Env rest (history ++ ["env"])
+        "echo":args -> execute env_map (Echo args) rest (history ++ ["echo " ++ unwords args])
+        ["history"] -> execute env_map History rest (history ++ ["history"])
+        [s] | Just (var, val) <- splitbyAssignment s -> execute env_map (SVar (var, val)) rest (history ++ [var ++ "=" ++ val])
+        _           -> if containsRedir current_cmd
                        then 
                           do 
                             exit_status <- system (unwords current_cmd)
-                            handleNext env_map exit_status rest
-                       else putStrLn "Invalid Command." >> Main.shell env_map rest
+                            handleNext env_map exit_status rest (history ++ [unwords current_cmd])
+                       else putStrLn "Invalid Command." >> Main.shell env_map rest history
 
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
-    Main.shell Map.empty [] -- start with empty map of env vars, empty cmd list
+    Main.shell Map.empty [] [] -- start with empty map of env vars, empty cmd list, no command history
