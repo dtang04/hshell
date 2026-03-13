@@ -64,14 +64,27 @@ execute env_map (Cd Nothing) rest_cmds = do
 
 execute env_map (Cd (Just ('~':'/':rest))) rest_cmds = do
     homeDir <- getHomeDirectory
-    setCurrentDirectory (homeDir ++ "/" ++ rest)
-    handleNext env_map ExitSuccess rest_cmds
+    let full_path = homeDir ++ "/" ++ rest
+    status <- doesDirectoryExist full_path
+    if status
+        then do
+            setCurrentDirectory full_path
+            handleNext env_map ExitSuccess rest_cmds
+        else do
+            putStrLn "Directory doesn't exist."
+            handleNext env_map ExitSuccess rest_cmds
 
 execute env_map (Cd (Just dir)) rest_cmds
     | dir == "~" = execute env_map (Cd Nothing) rest_cmds
     | otherwise = do
-        setCurrentDirectory dir 
-        handleNext env_map ExitSuccess rest_cmds
+        status <- doesDirectoryExist dir
+        if status
+        then do
+            setCurrentDirectory dir 
+            handleNext env_map ExitSuccess rest_cmds
+        else do
+            putStrLn "Directory doesn't exist."
+            handleNext env_map ExitSuccess rest_cmds
 
 -- env
 execute env_map Env rest_cmds = do
