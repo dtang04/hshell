@@ -44,4 +44,3 @@ main = hspec $ do
         it "doesn't find" $
             containsRedir ["ls", ";",  "ls",  ";", "pwd"]
                 `shouldBe` False
-    
