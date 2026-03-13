@@ -10,7 +10,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 
 data Command = Exit | Ls (Maybe String) | Pwd | Cd (Maybe String) | SVar (String, String) | Env | Echo [String] | History 
-                    | Clear | Cat String | Touch String | MkDir String | Rm String | RmDir String | Date | Me
+                    | Clear | Cat String | Touch String | MkDir String | Rm String | RmDir String | Date | Me | HostName
 
 shell :: Map String String -> [String] -> [String] -> IO ()
 {-
@@ -163,6 +163,11 @@ execute env_map Me rest_cmds history = do
     exitCode <- system "whoami"
     handleNext env_map exitCode rest_cmds history
 
+-- hostname
+execute env_map HostName rest_cmds history = do
+    exitCode <- system "hostname"
+    handleNext env_map exitCode rest_cmds history
+
 -- adding new env var
 execute env_map (SVar (var, value)) rest_cmds history = do
     let env_map' = Map.insert var value env_map
@@ -222,6 +227,7 @@ processCurrentCmd env_map current_cmd rest history =
         ["rmdir", dir_name]         -> execute env_map (RmDir dir_name) rest (history ++ ["rmdir " ++ dir_name])
         ["date"]                    -> execute env_map Date rest (history ++ ["date"])
         ["whoami"]                  -> execute env_map Me rest (history ++ ["whoami"])
+        ["hostname"]                -> execute env_map HostName rest (history ++ ["hostname"])
         _           -> if containsRedir current_cmd -- check for redirections
                        then 
                           do 
