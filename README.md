@@ -1,4 +1,4 @@
-### CMSC 223 Final Project - HShell
+### CMSC 223 Final Project (Winter Quarter, 2026) - HShell
 
 Checkpoints:
 * [3/3/26] All easy goals implemented, all medium goals implemented
